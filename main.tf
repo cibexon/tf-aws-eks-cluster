@@ -1,5 +1,12 @@
 provider "aws" {
   region = var.AWS_REGION
+
+  default_tags {
+    tags = {
+      Environment = "Dev"
+      Service     = "EKS-Cluster"
+    }
+  }
 }
 
 module "vpc" {
@@ -28,12 +35,26 @@ module "eks" {
   subnet_ids                     = module.vpc.private_subnets
   cluster_endpoint_public_access = true
 
+  # Оптимізація дисків та вузлів
   eks_managed_node_groups = {
     nodes = {
       min_size       = 1
       max_size       = 5
       desired_size   = 4
       instance_types = [var.EKS_INSTANCE_TYPE]
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 20
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 125
+            delete_on_termination = true
+          }
+        }
+      }
     }
   }
 }
