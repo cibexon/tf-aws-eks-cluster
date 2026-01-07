@@ -32,7 +32,7 @@ module "eks" {
     nodes = {
       min_size       = 1
       max_size       = 5
-      desired_size   = var.EKS_NUM_NODES
+      desired_size   = 4
       instance_types = [var.EKS_INSTANCE_TYPE]
     }
   }
