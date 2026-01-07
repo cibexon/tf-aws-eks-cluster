@@ -40,7 +40,7 @@ module "eks" {
     nodes = {
       min_size       = 1
       max_size       = 5
-      desired_size   = 4
+      desired_size   = var.EKS_NUM_NODES
       instance_types = [var.EKS_INSTANCE_TYPE]
 
       block_device_mappings = {
@@ -57,4 +57,44 @@ module "eks" {
       }
     }
   }
+}
+
+# --- Провайдери для FluxCD та GitHub ---
+provider "github" {
+  owner = var.GITHUB_OWNER
+  token = var.GITHUB_TOKEN
+}
+
+# Отримуємо токен автентифікації для підключення до EKS
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+
+# 1. Генерація TLS ключів (SSH) для зв'язку Flux та GitHub
+module "tls_keys" {
+  source = "github.com/den-vasyliev/tf-hashicorp-tls-keys"
+}
+
+# 2. Створення GitOps репозиторію на GitHub
+module "github_repository" {
+  source                   = "github.com/den-vasyliev/tf-github-repository"
+  github_owner             = var.GITHUB_OWNER
+  github_token             = var.GITHUB_TOKEN
+  repository_name          = "kbot-gitops"
+  public_key_openssh       = module.tls_keys.public_key_openssh
+  public_key_openssh_title = "flux-ssh-key"
+}
+
+# 3. Встановлення (Bootstrap) FluxCD у ваш EKS кластер
+module "flux_bootstrap" {
+  source            = "github.com/den-vasyliev/tf-fluxcd-flux-bootstrap"
+  github_repository = "${var.GITHUB_OWNER}/${module.github_repository.repository_name}"
+  private_key_pem   = module.tls_keys.private_key_pem
+  config_path       = "~/.kube/config"
 }
