@@ -60,4 +60,5 @@ jobs:
           infracost comment github --path=/tmp/infracost.json \
                                    --github-token=${{ github.token }} \
                                    --pull-request=${{ github.event.pull_request.number }} \
+                                   --repo=${{ github.repository }} \
                                    --behavior=update
