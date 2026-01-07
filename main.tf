@@ -2,12 +2,11 @@ provider "aws" {
   region = var.AWS_REGION
 }
 
-# Модуль для створення мережі (VPC) - необхідний для EKS
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
-  name = "eks-vpc"
+  name = "${var.EKS_CLUSTER_NAME}-vpc"
   cidr = "10.0.0.0/16"
 
   azs             = ["${var.AWS_REGION}a", "${var.AWS_REGION}b"]
@@ -18,12 +17,11 @@ module "vpc" {
   single_nat_gateway = true
 }
 
-# Модуль EKS кластера
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 19.0"
 
-  cluster_name    = "my-eks-cluster"
+  cluster_name    = var.EKS_CLUSTER_NAME
   cluster_version = "1.29"
 
   vpc_id                         = module.vpc.vpc_id
@@ -33,9 +31,9 @@ module "eks" {
   eks_managed_node_groups = {
     nodes = {
       min_size       = 1
-      max_size       = 3
+      max_size       = 5
       desired_size   = var.EKS_NUM_NODES
-      instance_types = ["t3.medium"]
+      instance_types = [var.EKS_INSTANCE_TYPE]
     }
   }
 }
